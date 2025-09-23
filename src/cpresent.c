@@ -16,12 +16,6 @@ static const nibble_t INV_STABLE[STABLE_SIZE] = {
     [0xC] = 0, [0xD] = 7, [0xE] = 9, [0xF] = 0xA,
 };
 
-static const size_t INV_PTABLE[PTABLE_SIZE] = {
-    0, 4, 8,  12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60,
-    1, 5, 9,  13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61,
-    2, 6, 10, 14, 18, 22, 26, 30, 34, 38, 42, 46, 50, 54, 58, 62,
-    3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63};
-
 static block_t round_keys[ROUND_KEYS];
 
 const block_t AB = 0xFFFFFFFFFFFFFFFFLL;
@@ -37,7 +31,8 @@ void gen_round_keys80(key_t key)
     key_t new_key;
     for (block_t i = 0; i < ROUND_KEYS; i++) {
         // last 64 bits
-        round_keys[i] = (key.hi & L16) | (key.lo & H48);
+        round_keys[i] = (key.hi & L16) << 48;
+        round_keys[i] |= (key.lo & H48) >> 16;
 
         // left round shift by 61
         new_key.hi = (key.lo >> 3) & L16;
@@ -102,7 +97,7 @@ block_t pbox_layer(block_t block, bool inv)
     block_t pblock = 0;
     size_t perms = BLOCK_BITS - 1;
     for (size_t j = 0; j < perms; j++) {
-        size_t p = inv ? j * 16 % perms : INV_PTABLE[j];
+        size_t p = j * (inv ? 16 : 4) % perms;
         pblock = (pblock & ~(1 << p)) | (block & (1 << p));
     }
     return pblock;
