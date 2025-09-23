@@ -1,0 +1,26 @@
+BasedOnStyle: Google
+
+IncludeIsMainRegex: "$"
+SortIncludes: true
+IncludeBlocks: Regroup
+
+IncludeCategories:
+    # Project headers
+  - Regex: '^".*\.h"$'
+    Priority: 1
+    # Test framework headers
+  - Regex: '^<criterion/.*\.h>$'
+    Priority: 2
+    # System headers
+  - Regex: '^<.*\.h>$'
+    Priority: 3
+    # Any other include
+  - Regex: '.*'
+    Priority: 4
+
+IndentWidth: 4
+
+BreakBeforeBraces: Linux
+AllowShortFunctionsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+ColumnLimit: 80
