@@ -4,6 +4,14 @@
 #include <stddef.h>
 #include <string.h>
 
+#define NIBBLE_SIZE 4
+#define STABLE_SIZE 16
+
+#define ROUND_KEYS 32
+
+#define BLOCK_BITS sizeof(block_t) * 8
+#define NIBBLES_IN_BLOCK BLOCK_BITS / NIBBLE_SIZE
+
 static const nibble_t STABLE[STABLE_SIZE] = {
     [0] = 0xC, [1] = 5,   [2] = 6,   [3] = 0xB, [4] = 9,     [5] = 0,
     [6] = 0xA, [7] = 0xD, [8] = 3,   [9] = 0xE, [0xA] = 0xF, [0xB] = 8,
