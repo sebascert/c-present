@@ -26,7 +26,7 @@ const block_t L4 = 0x000000000000000FLL;
 block_t sbox_layer(block_t block, bool inv);
 block_t pbox_layer(block_t block, bool inv);
 
-void gen_round_keys80(key_t key)
+void set_key(key_t key)
 {
     key_t new_key;
     for (block_t i = 0; i < ROUND_KEYS; i++) {

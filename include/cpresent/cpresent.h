@@ -17,7 +17,7 @@ typedef unsigned char nibble_t;
 #define ROUND_KEYS 32
 #define NIBBLES_IN_BLOCK BLOCK_BITS / NIBBLE_SIZE
 
-void gen_round_keys80(key_t key);
+void set_key(key_t key);
 void clean_key(key_t* key);
 
 block_t encrypt_block(block_t block);

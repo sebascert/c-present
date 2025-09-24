@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    gen_round_keys80(key);
+    set_key(key);
 
     while (1) {
         block_t word = 0, out_word;
