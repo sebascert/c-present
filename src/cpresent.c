@@ -1,8 +1,8 @@
 #include "cpresent/cpresent.h"
 
-#include <memory.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
 static const nibble_t STABLE[STABLE_SIZE] = {
     [0] = 0xC, [1] = 5,   [2] = 6,   [3] = 0xB, [4] = 9,     [5] = 0,
@@ -18,10 +18,9 @@ static const nibble_t INV_STABLE[STABLE_SIZE] = {
 
 static block_t round_keys[ROUND_KEYS];
 
-const block_t AB = 0xFFFFFFFFFFFFFFFFLL;
-const block_t H48 = 0xFFFFFFFFFFFF0000LL;
-const block_t L16 = 0x000000000000FFFFLL;
-const block_t L4 = 0x000000000000000FLL;
+const block_t H48 = 0xFFFFFFFFFFFF0000ULL;
+const block_t L16 = 0x000000000000FFFFULL;
+const block_t L4 = 0x000000000000000FULL;
 
 block_t sbox_layer(block_t block, bool inv);
 block_t pbox_layer(block_t block, bool inv);
@@ -41,10 +40,12 @@ void set_key(key_t key)
         new_key.lo |= key.lo >> 19;
 
         // S-Box last 4 bits
-        new_key.hi = (new_key.hi & ~L4) | STABLE[new_key.hi >> 12];
+        unsigned top4 = new_key.hi >> 12;
+        new_key.hi &= ~(L4 << 12);
+        new_key.hi |= (block_t)STABLE[top4] << 12;
 
         // counter xored with bits 19-15
-        new_key.lo ^= i << 14;
+        new_key.lo ^= (i + 1) << 15;
 
         key = new_key;
     }
@@ -72,7 +73,7 @@ block_t encrypt_block(block_t block)
 block_t decrypt_block(block_t block)
 {
     block ^= round_keys[ROUND_KEYS - 1];
-    for (size_t i = ROUND_KEYS - 2; i-- > 0;) {
+    for (size_t i = ROUND_KEYS - 1; i-- > 0;) {
         block = pbox_layer(block, true);
         block = sbox_layer(block, true);
 
@@ -84,21 +85,22 @@ block_t decrypt_block(block_t block)
 
 block_t sbox_layer(block_t block, bool inv)
 {
+    block_t sblock = 0;
     const nibble_t* st = inv ? INV_STABLE : STABLE;
     for (size_t j = 0; j < NIBBLES_IN_BLOCK; j++) {
         size_t s = 4 * j;
-        block = (block & ~(L4 << s)) | st[(block >> s) & L4] << s;
+        sblock |= ((block_t)st[(block >> s) & L4]) << s;
     }
-    return block;
+    return sblock;
 }
 
 block_t pbox_layer(block_t block, bool inv)
 {
-    block_t pblock = 0;
-    size_t perms = BLOCK_BITS - 1;
-    for (size_t j = 0; j < perms; j++) {
-        size_t p = j * (inv ? 16 : 4) % perms;
-        pblock = (pblock & ~(1 << p)) | (block & (1 << p));
+    size_t m = BLOCK_BITS - 1;
+    block_t pblock = (block & (1ULL << m));
+    for (size_t j = 0; j < m; j++) {
+        size_t p = (j * (inv ? 4 : 16)) % m;
+        pblock |= ((block >> j) & 1ULL) << p;
     }
     return pblock;
 }
