@@ -1,4 +1,5 @@
 #include "cpresent/cpresent.h"
+#include "cpresent/utils.h"
 
 #include <argp.h>
 #include <stdbool.h>
@@ -52,9 +53,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         case ARGP_KEY_END:
             if (arguments->mode == MODE_UNSET)
                 arguments->mode = MODE_ENCRYPT;
-            if (!arguments->key_file) {
+            if (!arguments->key_file)
                 argp_error(state, "missing required KEYFILE");
-            }
             break;
         default:
             return ARGP_ERR_UNKNOWN;
@@ -76,27 +76,6 @@ void cleanup()
         fclose(out);
 }
 
-bool read_key(FILE *kf)
-{
-    unsigned char kb[10];
-    size_t kn = fread(kb, 1, sizeof(kb), kf);
-    fclose(kf);
-
-    if (kn != sizeof(kb)) {
-        perror("ERROR - key must be exactly 80 bits (10 bytes)");
-        return false;
-    }
-
-    key.hi = ((unsigned long long)kb[0] << 8) | (unsigned long long)kb[1];
-    key.lo =
-        ((unsigned long long)kb[2] << 56) | ((unsigned long long)kb[3] << 48) |
-        ((unsigned long long)kb[4] << 40) | ((unsigned long long)kb[5] << 32) |
-        ((unsigned long long)kb[6] << 24) | ((unsigned long long)kb[7] << 16) |
-        ((unsigned long long)kb[8] << 8) | ((unsigned long long)kb[9]);
-
-    return true;
-}
-
 int main(int argc, char *argv[])
 {
     struct arguments arguments = {.key_file = NULL,
@@ -107,11 +86,8 @@ int main(int argc, char *argv[])
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
     FILE *kf = fopen(arguments.key_file, "rb");
-    if (!kf) {
-        perror("ERROR - fopen key");
-        return EXIT_FAILURE;
-    }
-    if (!read_key(kf)) {
+    if (read_key(kf, &key)) {
+        fclose(kf);
         return EXIT_FAILURE;
     }
 
@@ -119,7 +95,7 @@ int main(int argc, char *argv[])
     if (arguments.input_file) {
         in = fopen(arguments.input_file, "rb");
         if (!in) {
-            perror("ERROR - fopen in");
+            fprintf(stderr, "ERROR - fopen in\n");
             goto ERR;
         }
     }
@@ -128,7 +104,7 @@ int main(int argc, char *argv[])
     if (arguments.output_file) {
         out = fopen(arguments.output_file, "wb");
         if (!out) {
-            perror("ERROR - fopen out");
+            fprintf(stderr, "ERROR - fopen out\n");
             goto ERR;
         }
     }
@@ -137,11 +113,10 @@ int main(int argc, char *argv[])
 
     while (1) {
         block_t word = 0, out_word;
-        size_t n = fread(&word, 1, sizeof(word), in);
-        if (n == 0) {
+        if (read_block(in, &word)) {
             if (feof(in))
                 break;
-            perror("ERROR - fread");
+            fprintf(stderr, "ERROR - fread\n");
             goto ERR;
         }
 
@@ -150,8 +125,8 @@ int main(int argc, char *argv[])
         else
             out_word = encrypt_block(word);
 
-        if (fwrite(&out_word, 1, sizeof(out_word), out) != sizeof(out_word)) {
-            perror("ERROR - fwrite");
+        if (write_block(out, out_word)) {
+            fprintf(stderr, "ERROR - fwrite\n");
             goto ERR;
         }
     }
